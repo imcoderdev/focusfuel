@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+// ... existing code ...
+model FocusSession {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  startTime DateTime
+  duration  Int      // in seconds
+  createdAt DateTime @default(now())
+}
+// ... existing code ...
+model Reflection {
+  id            Int      @id @default(autoincrement())
+  userId        String
+  sessionDate   DateTime @default(now())
+  stayedFocused Boolean
+  distractions  String?
+  duration      Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+// ... existing code ...
+model User {
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  password       String
+  emailVerified  DateTime?
+  createdAt      DateTime  @default(now())
+  image          String?   @db.Text
+  tasks          Task[]
+  moods          Mood[]
+  focusSessions  FocusSession[]
+  reflections    Reflection[]
+  emergencyLogs  EmergencyLog[]
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  userId      String
+  title       String
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description String?
+  dueDate     DateTime?
+  priority    Int?
+}
+
+model Mood {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  mood      String
+  createdAt DateTime @default(now())
+}
+
+model EmergencyLog {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issue      String
+  aiResponse String
+  createdAt  DateTime @default(now())
+}
