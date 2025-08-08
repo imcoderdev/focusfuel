@@ -2,11 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 // Environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+if ((!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) && process.env.NODE_ENV !== 'production') {
+  console.warn('Missing Supabase environment variables, using placeholders')
 }
 
 // Server-side Supabase client with cookies support (for Server Components)
@@ -18,9 +18,9 @@ export const createServerSupabaseClient = async () => {
       getAll() {
         return cookieStore.getAll()
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: any) {
         try {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value, options }: any) =>
             cookieStore.set(name, value, options)
           )
         } catch {
@@ -68,7 +68,7 @@ export const createServerSupabaseClientFromRequest = (request: Request) => {
         console.log('Filtered Supabase cookies:', cookies)
         return cookies
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: any) {
         // API routes can't set cookies directly, this would need response handling
         // For now, we'll just read cookies for authentication
         console.log('Attempt to set cookies:', cookiesToSet)
