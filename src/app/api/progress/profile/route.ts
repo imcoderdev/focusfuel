@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { createServerSupabaseClientFromRequest } from "@/lib/supabase";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || !token.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const user = await prisma.user.findUnique({ where: { email: token.email } });
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  // Get user from Supabase auth using request cookies
+  const supabase = createServerSupabaseClientFromRequest(request);
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    return NextResponse.json({ error: "Unauthorized - Please log in first" }, { status: 401 });
+  }
+
+  // Check if user profile exists in our database
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser) {
+    return NextResponse.json({ 
+      error: "User profile not found. Please complete your profile setup." 
+    }, { status: 404 });
+  }
+
   const bonsais = await prisma.focusSession.count({ where: { userId: user.id } });
   const totalFocusTimeMinutes = await prisma.reflection.aggregate({
     _sum: { duration: true },

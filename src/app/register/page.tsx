@@ -5,16 +5,29 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import Confetti from "react-confetti";
 import { Inter } from "next/font/google";
-import { signIn } from "next-auth/react";
+import { useAuth } from "@/lib/auth-client";
+import { useSupabaseAuth } from "@/components/AuthProvider";
+import { FaGoogle, FaGithub } from "react-icons/fa";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "700"] });
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [githubLoading, setGithubLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const router = useRouter();
   const [confettiSize, setConfettiSize] = useState({ width: 300, height: 300 });
+  const { signUp, signInWithGoogle, signInWithGitHub } = useAuth();
+  const { user } = useSupabaseAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -30,35 +43,25 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     toast.dismiss();
+    
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.firstName + " " + form.lastName,
-          email: form.email,
-          password: form.password,
-        }),
-      });
-      const data = await res.json();
+      const { data, error } = await signUp(
+        form.email, 
+        form.password, 
+        form.firstName + " " + form.lastName
+      );
+      
       setLoading(false);
-      if (res.ok) {
-        setCodeSent(true);
-        toast.success("User registered successfully!");
-        // Auto-login after successful registration
-        const loginRes = await signIn("credentials", {
-          redirect: false,
-          email: form.email,
-          password: form.password,
-        });
-        if (loginRes && !loginRes.error) {
-          router.push("/dashboard");
-        } else {
-          toast.error("Auto-login failed. Please sign in manually.");
-          router.push("/login");
-        }
+      
+      if (error) {
+        toast.error(error.message || "Registration failed");
       } else {
-        toast.error(data.error || "Registration failed");
+        setCodeSent(true);
+        toast.success("Please check your email to verify your account!");
+        // Note: With Supabase, user needs to verify email before they can login
+        setTimeout(() => {
+          router.push("/login");
+        }, 3000);
       }
     } catch (err) {
       setLoading(false);
@@ -66,8 +69,42 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleGoogleSignUp() {
+    setGoogleLoading(true);
+    toast.dismiss();
+    
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        toast.error(error.message || "Google sign up failed");
+        setGoogleLoading(false);
+      }
+      // If successful, user will be redirected by Supabase
+    } catch (err) {
+      setGoogleLoading(false);
+      toast.error("Google sign up failed");
+    }
+  }
+
+  async function handleGitHubSignUp() {
+    setGithubLoading(true);
+    toast.dismiss();
+    
+    try {
+      const { error } = await signInWithGitHub();
+      if (error) {
+        toast.error(error.message || "GitHub sign up failed");
+        setGithubLoading(false);
+      }
+      // If successful, user will be redirected by Supabase
+    } catch (err) {
+      setGithubLoading(false);
+      toast.error("GitHub sign up failed");
+    }
+  }
+
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <Toaster position="top-center" />
       <AnimatePresence>
         {codeSent && (
@@ -80,146 +117,117 @@ export default function RegisterPage() {
           />
         )}
       </AnimatePresence>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
-        <div style={{
-          background: "var(--reactist-bg-aside)",
-          color: "#111",
-          borderRadius: 28,
-          padding: 40,
-          minWidth: 380,
-          maxWidth: 400,
-          width: "100%",
-          boxShadow: "0 4px 32px 0 #0002",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center"
-        }}>
-          <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 32, color: "#111", textAlign: "center" }}>Sign up</h1>
-          <form onSubmit={handleSubmit} style={{ width: "100%", display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="firstName" style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, display: "block", color: "#111" }}>First name</label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  placeholder="Your first name"
-                  value={form.firstName}
-                  onChange={handleChange}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #e6e6e6",
-                    background: "#fff",
-                    color: "#111",
-                    fontSize: 16,
-                    marginBottom: 0
-                  }}
-                  required
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="lastName" style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, display: "block", color: "#111" }}>Last name</label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  placeholder="Your last name"
-                  value={form.lastName}
-                  onChange={handleChange}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid #e6e6e6",
-                    background: "#fff",
-                    color: "#111",
-                    fontSize: 16,
-                    marginBottom: 0
-                  }}
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="email" style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, display: "block", color: "#111" }}>Email</label>
+      <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-8 space-y-6">
+        <h1 className="text-3xl font-bold text-white text-center">Sign up</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label htmlFor="firstName" className="block text-sm font-medium text-slate-400 mb-1">
+                First name
+              </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Your email address"
-                value={form.email}
+                id="firstName"
+                name="firstName"
+                type="text"
+                placeholder="Your first name"
+                value={form.firstName}
                 onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #e6e6e6",
-                  background: "#fff",
-                  color: "#111",
-                  fontSize: 16
-                }}
+                className="bg-slate-700 border border-slate-600 text-white rounded-lg w-full p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-slate-500"
                 required
+                suppressHydrationWarning
               />
             </div>
-            <div>
-              <label htmlFor="password" style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, display: "block", color: "#111" }}>Password</label>
+            <div className="flex-1">
+              <label htmlFor="lastName" className="block text-sm font-medium text-slate-400 mb-1">
+                Last name
+              </label>
               <input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="Create a password"
-                value={form.password}
+                id="lastName"
+                name="lastName"
+                type="text"
+                placeholder="Your last name"
+                value={form.lastName}
                 onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #e6e6e6",
-                  background: "#fff",
-                  color: "#111",
-                  fontSize: 16
-                }}
+                className="bg-slate-700 border border-slate-600 text-white rounded-lg w-full p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-slate-500"
                 required
+                suppressHydrationWarning
               />
             </div>
-            <button
-              type="submit"
-              style={{
-                width: "100%",
-                background: "#fff",
-                color: "#111",
-                fontWeight: 700,
-                fontSize: 18,
-                border: "none",
-                borderRadius: 14,
-                padding: "14px 0",
-                marginTop: 10,
-                marginBottom: 10,
-                cursor: loading ? "not-allowed" : "pointer",
-                transition: "background 0.2s, color 0.2s"
-              }}
-              disabled={loading}
-            >
-              {loading ? "Signing up..." : "Sign up"}
-            </button>
-          </form>
-          <div style={{ width: "100%", textAlign: "center", margin: "18px 0 10px 0", color: "#888", fontWeight: 600, fontSize: 15 }}>
-            <span style={{ display: "inline-block", width: 40, borderBottom: "1px solid #e6e6e6", marginRight: 8, verticalAlign: "middle" }}></span>
-            OR
-            <span style={{ display: "inline-block", width: 40, borderBottom: "1px solid #e6e6e6", marginLeft: 8, verticalAlign: "middle" }}></span>
           </div>
-          <button style={{ width: "100%", background: "#fff", color: "#111", borderRadius: 10, fontWeight: 700, fontSize: 17, padding: "12px 0", marginBottom: 10, border: "1px solid #e6e6e6", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer" }}>
-            <span style={{ fontSize: 20 }}>🌐</span> Continue with Google
-          </button>
-          <button style={{ width: "100%", background: "#fff", color: "#111", borderRadius: 10, fontWeight: 700, fontSize: 17, padding: "12px 0", marginBottom: 10, border: "1px solid #e6e6e6", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer" }}>
-            <span style={{ fontSize: 20 }}>🐙</span> Continue with GitHub
-          </button>
-          <div style={{ marginTop: 18, color: "#888", fontSize: 15, textAlign: "center" }}>
-            Already have an account?{' '}
-            <a href="/login" style={{ color: "#111", textDecoration: "underline", fontWeight: 600 }}>Sign in</a>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-slate-400 mb-1">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Your email address"
+              value={form.email}
+              onChange={handleChange}
+              className="bg-slate-700 border border-slate-600 text-white rounded-lg w-full p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-slate-500"
+              required
+              suppressHydrationWarning
+            />
           </div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-400 mb-1">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Create a password"
+              value={form.password}
+              onChange={handleChange}
+              className="bg-slate-700 border border-slate-600 text-white rounded-lg w-full p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-slate-500"
+              required
+              suppressHydrationWarning
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+            suppressHydrationWarning
+          >
+            {loading ? "Signing up..." : "Sign up"}
+          </button>
+        </form>
+        
+        <div className="flex items-center justify-center space-x-4 text-slate-400">
+          <div className="flex-1 border-t border-slate-600"></div>
+          <span className="px-2 text-sm font-medium">OR</span>
+          <div className="flex-1 border-t border-slate-600"></div>
+        </div>
+        
+        <div className="space-y-3">
+          <button 
+            onClick={handleGoogleSignUp}
+            disabled={loading || googleLoading}
+            className="w-full flex items-center justify-center gap-3 bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            suppressHydrationWarning
+          >
+            <FaGoogle className="text-lg text-blue-500" />
+            {googleLoading ? "Connecting..." : "Continue with Google"}
+          </button>
+          <button 
+            onClick={handleGitHubSignUp}
+            disabled={loading || githubLoading}
+            className="w-full flex items-center justify-center gap-3 bg-slate-700 border border-slate-600 hover:bg-slate-600 text-slate-300 font-bold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            suppressHydrationWarning
+          >
+            <FaGithub className="text-lg" />
+            {githubLoading ? "Connecting..." : "Continue with GitHub"}
+          </button>
+        </div>
+        
+        <div className="text-center text-slate-400 text-sm">
+          Already have an account?{' '}
+          <a href="/login" className="font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+            Sign in
+          </a>
         </div>
       </div>
     </div>

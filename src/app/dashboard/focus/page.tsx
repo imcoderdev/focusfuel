@@ -1,32 +1,61 @@
 "use client";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { Inter } from "next/font/google";
-import { AnimatePresence } from "framer-motion";
 import Confetti from "react-confetti";
+import Link from "next/link";
+import { useSupabaseAuth } from "@/components/AuthProvider";
+import BonsaiCanvas from "@/components/BonsaiCanvas";
+import FocusControls from "@/components/FocusControls";
+import { useAmbientAudio } from "@/hooks/useAmbientAudio";
+import { HiOutlineSpeakerWave, HiOutlineSpeakerXMark } from "react-icons/hi2";
 
 const inter = Inter({ subsets: ["latin"], weight: ["400", "700"] });
 
 export default function FocusPage() {
-  const [duration, setDuration] = useState(25); // in minutes
-  const [seconds, setSeconds] = useState(duration * 60);
+  const { user, loading } = useSupabaseAuth();
+  const { isPlaying, toggleAudio } = useAmbientAudio();
+  
+  // State-driven UI architecture
+  const [sessionState, setSessionState] = useState<'setup' | 'running'>('setup');
+  const [duration, setDuration] = useState(1500); // 25 minutes default
+  const [seconds, setSeconds] = useState(duration);
   const [isRunning, setIsRunning] = useState(false);
-  const [growthStage, setGrowthStage] = useState(0); // 0: seedling, 1: sapling, 2: young tree, 3: mature, -1: withered
+  const [growthStage, setGrowthStage] = useState<'Seedling' | 'Sprout' | 'Mature' | 'Flowering' | 'Withered'>('Seedling');
   const [forest, setForest] = useState(0);
+  const [customDurationInput, setCustomDurationInput] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [showReflection, setShowReflection] = useState(false);
   const [reflectionSaved, setReflectionSaved] = useState(false);
-  const [reflectionData, setReflectionData] = useState<{ focused: boolean | null; distractions: string }>({ focused: null, distractions: "" });
   const [showEmergency, setShowEmergency] = useState(false);
   const [emergencyInput, setEmergencyInput] = useState("");
   const [emergencyResponse, setEmergencyResponse] = useState<string | null>(null);
   const [emergencyLoading, setEmergencyLoading] = useState(false);
 
+  // Load forest count from localStorage on mount
+  useEffect(() => {
+    const savedForest = localStorage.getItem('bonsaiForest');
+    console.log('🌳 Loading from localStorage:', savedForest);
+    if (savedForest) {
+      const count = parseInt(savedForest, 10);
+      console.log('🌳 Loaded forest count from localStorage:', count);
+      setForest(count);
+    } else {
+      console.log('🌳 No saved forest count found, starting at 0');
+    }
+  }, []);
+
+  // Save forest count to localStorage whenever it changes
+  useEffect(() => {
+    console.log('Saving forest count to localStorage:', forest);
+    localStorage.setItem('bonsaiForest', forest.toString());
+  }, [forest]);
+
   // Update seconds when duration changes (only if not running)
   useEffect(() => {
-    if (!isRunning) setSeconds(duration * 60);
+    if (!isRunning) setSeconds(duration);
   }, [duration]);
 
   // Timer logic
@@ -47,19 +76,30 @@ export default function FocusPage() {
   // Growth stage logic
   useEffect(() => {
     if (!isRunning || seconds === 0) return;
-    const percent = 1 - seconds / (duration * 60);
-    if (percent >= 0.75) setGrowthStage(3);
-    else if (percent >= 0.5) setGrowthStage(2);
-    else if (percent >= 0.25) setGrowthStage(1);
-    else setGrowthStage(0);
+    const percent = 1 - seconds / duration;
+    let newStage: 'Seedling' | 'Sprout' | 'Mature' | 'Flowering' | 'Withered' = 'Seedling';
+    
+    if (percent >= 0.75) newStage = 'Flowering';
+    else if (percent >= 0.5) newStage = 'Mature';
+    else if (percent >= 0.25) newStage = 'Sprout';
+    else newStage = 'Seedling';
+    
+    console.log(`Progress: ${(percent * 100).toFixed(1)}%, Stage: ${newStage}, Seconds left: ${seconds}`);
+    setGrowthStage(newStage);
   }, [seconds, duration, isRunning]);
 
   // Completion logic
   useEffect(() => {
     if (seconds === 0 && isRunning) {
+      console.log("🌳 Focus session completed! Growing bonsai...");
       setIsRunning(false);
-      setGrowthStage(3);
-      setForest(f => f + 1);
+      setSessionState('setup'); // Return to setup after completion
+      setGrowthStage('Flowering');
+      setForest(f => {
+        const newCount = f + 1;
+        console.log(`🌳 Forest count updated: ${f} -> ${newCount}`);
+        return newCount;
+      });
       toast.success("Bonsai matured!");
       setShowReflection(true);
       
@@ -77,7 +117,7 @@ export default function FocusPage() {
   useEffect(() => {
     function handleUnload() {
       if (isRunning) {
-        setGrowthStage(-1);
+        setGrowthStage('Withered');
         toast.error("Bonsai withered!");
       }
     }
@@ -86,21 +126,30 @@ export default function FocusPage() {
   }, [isRunning]);
 
   function startTimer() {
-    if (seconds === 0) return;
+    if (seconds === 0 || !user?.email) {
+      if (!user?.email) {
+        toast.error("Please log in to start focus session");
+      }
+      return;
+    }
     setIsRunning(true);
+    setSessionState('running'); // Transition to running state
     setStartTime(new Date());
-    setGrowthStage(0);
+    setGrowthStage('Seedling');
     toast("Bonsai growing!", { icon: "🌱", style: { background: "#dcfce7", color: "#166534" } });
   }
+  
   function pauseTimer() {
     setIsRunning(false);
-    setGrowthStage(-1);
+    setGrowthStage('Withered');
     toast.error("Bonsai withered!");
   }
+  
   function resetTimer(keepForest = false) {
     setIsRunning(false);
-    setSeconds(duration * 60);
-    setGrowthStage(0);
+    setSessionState('setup'); // Return to setup state
+    setSeconds(duration);
+    setGrowthStage('Seedling');
     setStartTime(null);
     if (!keepForest) setForest(0);
   }
@@ -109,53 +158,79 @@ export default function FocusPage() {
     const sec = (s % 60).toString().padStart(2, "0");
     return `${m}:${sec}`;
   }
-  function handleSlider(e: React.ChangeEvent<HTMLInputElement>) {
-    if (isRunning) return;
-    setDuration(Number(e.target.value));
-  }
-  function handleCustom(e: React.ChangeEvent<HTMLInputElement>) {
-    if (isRunning) return;
-    const val = Math.max(1, Math.min(60, Number(e.target.value)));
-    setDuration(val);
-  }
+
+  // Time preset handlers
+  const timePresets = [
+    { label: "5m", minutes: 5 },
+    { label: "15m", minutes: 15 },
+    { label: "25m", minutes: 25 },
+    { label: "45m", minutes: 45 },
+  ];
+
+  const handlePresetTime = (minutes: number) => {
+    setDuration(minutes * 60);
+    setCustomDurationInput(false);
+  };
+
+  const handleCustomTimeSubmit = (customMinutes: number) => {
+    if (customMinutes > 0 && customMinutes <= 300) { // Max 5 hours
+      setDuration(customMinutes * 60);
+      setCustomDurationInput(false);
+    } else {
+      toast.error("Please enter a valid duration (1-300 minutes)");
+    }
+  };
 
   async function saveFocusSession() {
-    if (!startTime) return;
+    if (!startTime || !user?.email) return;
     
     try {
-      const sessionDuration = duration * 60; // Convert minutes to seconds
-      const res = await fetch("/api/focus-session", {
+      const sessionDuration = duration;
+      const res = await fetch("/api/focus-session-final", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           startTime: startTime.toISOString(),
           duration: sessionDuration,
+          userEmail: user.email,
         }),
       });
       
       const data = await res.json();
       if (data.success) {
         console.log("Focus session saved successfully");
+        toast.success("Focus session saved! 🎯");
       } else {
         console.error("Failed to save focus session:", data.error);
+        toast.error("Failed to save session");
       }
     } catch (e) {
       console.error("Error saving focus session:", e);
+      toast.error("Failed to save session");
     }
   }
 
   async function handleEmergencySupport() {
+    if (!user?.email) {
+      toast.error("Please log in to use emergency support");
+      return;
+    }
+    
     setEmergencyLoading(true);
     setEmergencyResponse(null);
     try {
-      const res = await fetch("/api/emergency", {
+      const res = await fetch("/api/emergency-final", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ issue: emergencyInput }),
+        body: JSON.stringify({ 
+          issue: emergencyInput, 
+          userEmail: user.email 
+        }),
       });
       const data = await res.json();
       if (data.aiResponse) {
         setEmergencyResponse(data.aiResponse);
+        toast.success("AI support received! 💚");
       } else {
         toast.error(data.error || "Failed to get AI support");
       }
@@ -166,91 +241,214 @@ export default function FocusPage() {
     setEmergencyLoading(false);
   }
 
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="w-full h-screen bg-gradient-to-br from-slate-900 via-gray-800 to-black flex items-center justify-center">
+        <div className="text-white text-xl">Loading focus session...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className={inter.className + " flex flex-col items-center justify-center min-h-[60vh] p-4 w-full"} style={{ background: '#fff' }}>
+    <div className="w-full h-screen bg-gradient-to-br from-slate-900 via-gray-800 to-black relative overflow-hidden">
       <Toaster position="top-center" />
-      <div className="w-full max-w-md mx-auto rounded-2xl bg-white/70 backdrop-blur-md shadow-2xl p-8 flex flex-col items-center">
-        <h1 className="text-3xl font-extrabold text-green-800 mb-6 text-center">Focus Session</h1>
-        <div className="flex flex-col items-center w-full mb-4">
-          <motion.div
-            initial={{ scale: 0.8, rotateY: 0, rotateX: 0 }}
-            animate={{ scale: growthStage === -1 ? 0.9 : 1 + 0.1 * (growthStage + 1), boxShadow: growthStage > 0 ? "0 8px 32px 0 #22c55e55" : "0 2px 8px 0 #a7f3d0" }}
-            whileHover={{ rotateY: 8, rotateX: -4, scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 120, damping: 12 }}
-            style={{ perspective: 800 }}
-            className="mb-4"
-          >
-            <BonsaiSVG growthStage={growthStage} />
-          </motion.div>
-          <div className="mb-4 w-full flex flex-col items-center">
-            <label className="mb-2 font-semibold text-green-900">Timer: {duration} min</label>
-            <input
-              type="range"
-              min={1}
-              max={60}
-              value={duration}
-              onChange={handleSlider}
-              className="w-full mb-2 accent-green-600"
-              disabled={isRunning}
+      
+      {/* Atmospheric background effect */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-gray-800 to-black opacity-90" />
+        {/* Subtle animated background dots */}
+        <div className="absolute inset-0 opacity-10">
+          {Array.from({ length: 20 }, (_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-white rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [0, -20, 0],
+                opacity: [0.1, 0.3, 0.1],
+                scale: [1, 1.2, 1],
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
             />
-            <input
-              type="number"
-              min={1}
-              max={60}
-              value={duration}
-              onChange={handleCustom}
-              className="w-24 px-2 py-1 rounded-lg border border-green-300 text-green-900 focus:outline-none focus:ring-2 focus:ring-green-400 text-base shadow-sm mb-2"
-              disabled={isRunning}
-            />
-          </div>
-          <span className="text-5xl font-mono text-green-900 mb-2">{formatTime(seconds)}</span>
-          <div className="flex gap-2 mb-2">
-            <motion.button
-              onClick={startTimer}
-              className="bg-green-600 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-300 cursor-pointer"
-              whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #bbf7d0" }}
-              whileTap={{ scale: 0.97 }}
-              disabled={isRunning}
-            >
-              Start
-            </motion.button>
-            <motion.button
-              onClick={pauseTimer}
-              className="bg-yellow-500 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-yellow-300 cursor-pointer"
-              whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #fcd34d" }}
-              whileTap={{ scale: 0.97 }}
-              disabled={!isRunning}
-            >
-              Pause
-            </motion.button>
-            <motion.button
-              onClick={() => resetTimer(false)}
-              className="bg-gray-400 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-gray-300 cursor-pointer"
-              whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #d1d5db" }}
-              whileTap={{ scale: 0.97 }}
-            >
-              Reset
-            </motion.button>
-            {isRunning && (
-              <motion.button
-                onClick={() => setShowEmergency(true)}
-                className="bg-red-600 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-red-300 cursor-pointer"
-                whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #fca5a5" }}
-                whileTap={{ scale: 0.97 }}
-              >
-                Emergency
-              </motion.button>
-            )}
-          </div>
+          ))}
         </div>
-        <div className="text-green-700 font-semibold mt-2">Bonsais Grown: {forest}</div>
+      </div>
+
+      {/* Audio Control */}
+      <motion.button
+        onClick={toggleAudio}
+        className="fixed top-6 right-6 z-30 bg-black/20 backdrop-blur-md rounded-full p-3 border border-white/10 text-white hover:bg-black/30 transition-all duration-200"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+      >
+        {isPlaying ? (
+          <HiOutlineSpeakerWave className="text-xl" />
+        ) : (
+          <HiOutlineSpeakerXMark className="text-xl" />
+        )}
+      </motion.button>
+
+      {/* Forest Counter */}
+      <motion.div
+        className="fixed top-6 left-6 z-30 bg-black/20 backdrop-blur-md rounded-xl p-4 border border-white/10"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <Link href="/dashboard/forest" className="block hover:scale-105 transition-transform duration-200">
+          <div className="text-emerald-400 font-semibold text-lg">🌳 Bonsai Forest: {forest}</div>
+          {forest > 0 && (
+            <div className="text-white/70 text-sm mt-1">
+              {forest} completed session{forest > 1 ? 's' : ''} • Click to explore
+            </div>
+          )}
+          {forest === 0 && (
+            <div className="text-white/50 text-xs mt-1">
+              Complete sessions to grow your forest
+            </div>
+          )}
+        </Link>
+      </motion.div>
+
+      {/* Main Layout */}
+      <div className="flex flex-col items-center justify-center h-full p-8 relative z-10">
+        
+        {/* Setup State - Simplified Controls */}
+        <AnimatePresence>
+          {sessionState === 'setup' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="flex flex-col items-center justify-center space-y-8"
+            >
+              {/* Main Time Display */}
+              <motion.div
+                className="text-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {customDurationInput ? (
+                  <CustomTimeInput 
+                    onSubmit={handleCustomTimeSubmit}
+                    onCancel={() => setCustomDurationInput(false)}
+                    initialMinutes={Math.floor(duration / 60)}
+                  />
+                ) : (
+                  <motion.h1
+                    onClick={() => setCustomDurationInput(true)}
+                    className="text-8xl font-bold text-white cursor-pointer hover:text-emerald-400 transition-colors duration-300"
+                    whileHover={{ scale: 1.1 }}
+                  >
+                    {formatTime(duration)}
+                  </motion.h1>
+                )}
+                <p className="text-white/60 text-xl mt-4">
+                  {customDurationInput ? "Enter custom duration" : "Click to customize"}
+                </p>
+              </motion.div>
+
+              {/* Time Preset Buttons */}
+              <motion.div
+                className="flex gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                {timePresets.map((preset, index) => (
+                  <motion.button
+                    key={preset.label}
+                    onClick={() => handlePresetTime(preset.minutes)}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                      duration === preset.minutes * 60
+                        ? 'bg-emerald-500 text-white shadow-lg'
+                        : 'bg-white/10 text-white/80 hover:bg-white/20'
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 + index * 0.1 }}
+                  >
+                    {preset.label}
+                  </motion.button>
+                ))}
+              </motion.div>
+
+              {/* Start Focus Button */}
+              <motion.button
+                onClick={startTimer}
+                disabled={!user?.email}
+                className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xl font-bold px-12 py-4 rounded-2xl shadow-lg transition-all duration-200"
+                whileHover={user?.email ? { scale: 1.05, boxShadow: "0 8px 25px rgba(16, 185, 129, 0.3)" } : {}}
+                whileTap={user?.email ? { scale: 0.95 } : {}}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+              >
+                {!user?.email ? "Please log in to start" : "Start Focus Session"}
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Running State - Immersive Experience */}
+        <AnimatePresence>
+          {sessionState === 'running' && (
+            <motion.div
+              key="running"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="flex flex-col h-full w-full p-4 overflow-y-auto"
+            >
+              {/* --- CONTAINER 1: THE TREE (FLEXIBLE) --- 
+                This div contains ONLY the tree and its text. 
+                The `flex-1` class is the key that makes it grow and shrink.
+              */}
+              <div className="flex-1 min-h-0 flex items-center justify-center">
+                <BonsaiCanvas growthStage={growthStage} /> 
+              </div>
+
+              {/* --- CONTAINER 2: THE CONTROLS (RIGID) --- 
+                This div contains ONLY the timer and buttons.
+                It is a SIBLING to the container above, not its parent or child.
+              */}
+              <div className="flex-shrink-0 mt-4">
+                <FocusControls
+                  duration={duration}
+                  seconds={seconds}
+                  isRunning={isRunning}
+                  onStart={startTimer}
+                  onPause={pauseTimer}
+                  onReset={() => resetTimer(false)}
+                  onEmergency={() => setShowEmergency(true)}
+                  onDurationChange={setDuration}
+                  formatTime={formatTime}
+                  disabled={!user?.email}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <AnimatePresence>
         {showReflection && (
           <ReflectionModal
             open={showReflection}
             onClose={() => setShowReflection(false)}
-            duration={duration * 60}
+            duration={duration}
+            userEmail={user?.email}
             onSaved={() => {
               setReflectionSaved(true);
               setTimeout(() => setReflectionSaved(false), 2000);
@@ -266,42 +464,42 @@ export default function FocusPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ duration: 0.5, type: "spring" }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
           >
-            <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-2xl shadow-2xl p-8 flex flex-col items-center">
-              <h2 className="text-2xl font-bold text-red-700 mb-4 text-center">Emergency Mode</h2>
+            <div className="max-w-md w-full bg-slate-800/80 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl p-8 flex flex-col items-center">
+              <h2 className="text-2xl font-bold text-emerald-400 mb-4 text-center">AI Assist</h2>
               <div className="mb-4 w-full">
-                <label className="block font-semibold text-red-900 mb-2">What’s wrong?</label>
+                <label className="block font-semibold text-slate-400 mb-2">How can I help?</label>
                 <input
                   type="text"
                   value={emergencyInput}
                   onChange={e => setEmergencyInput(e.target.value)}
-                  className="w-full rounded-lg border border-red-300 bg-white/80 px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-400 transition-all duration-200 text-base shadow-sm"
+                  className="w-full bg-slate-700 border border-slate-600 text-white rounded-lg placeholder-slate-500 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-base"
                   placeholder="Describe your issue..."
                   disabled={emergencyLoading}
                 />
               </div>
               <div className="mb-6 w-full min-h-[48px]">
                 {emergencyResponse && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-900 shadow text-sm">
-                    <strong>AI Support:</strong> {emergencyResponse}
+                  <div className="bg-slate-700/50 border border-slate-600 rounded-lg p-3 text-slate-300 shadow text-sm">
+                    <strong className="text-emerald-400">AI Suggestion:</strong> {emergencyResponse}
                   </div>
                 )}
               </div>
               <div className="flex gap-4 w-full">
                 <motion.button
                   onClick={handleEmergencySupport}
-                  className="bg-red-600 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-red-300 cursor-pointer"
-                  whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #fca5a5" }}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-emerald-300 cursor-pointer"
+                  whileHover={{ scale: 1.05, boxShadow: "0 8px 25px rgba(16, 185, 129, 0.4)" }}
                   whileTap={{ scale: 0.97 }}
                   disabled={emergencyLoading || !emergencyInput.trim()}
                 >
-                  {emergencyLoading ? "Getting Support..." : "Get AI Support"}
+                  {emergencyLoading ? "Getting Help..." : "Get Help"}
                 </motion.button>
                 <motion.button
                   onClick={() => { setShowEmergency(false); setEmergencyInput(""); setEmergencyResponse(null); }}
-                  className="bg-gray-400 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-gray-300 cursor-pointer"
-                  whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #d1d5db" }}
+                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-6 py-2 rounded-lg font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-slate-300 cursor-pointer"
+                  whileHover={{ scale: 1.05, boxShadow: "0 8px 25px rgba(71, 85, 105, 0.4)" }}
                   whileTap={{ scale: 0.97 }}
                   disabled={emergencyLoading}
                 >
@@ -316,59 +514,48 @@ export default function FocusPage() {
   );
 }
 
-function BonsaiSVG({ growthStage }: { growthStage: number }) {
-  // -1: withered, 0: seedling, 1: sapling, 2: young tree, 3: mature
-  if (growthStage === -1) {
-    // Withered: gray, drooped
-    return (
-      <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="90" cy="160" rx="40" ry="12" fill="#a3a3a3" />
-        <rect x="50" y="140" width="80" height="20" rx="10" fill="#e5e7eb" />
-        <rect x="82" y="100" width="16" height="40" rx="8" fill="#9ca3af" />
-        <path d="M90 120 Q70 130 90 100" stroke="#9ca3af" strokeWidth="8" fill="none" />
-        <ellipse cx="90" cy="110" rx="18" ry="10" fill="#d1d5db" />
-      </svg>
-    );
-  }
-  return (
-    <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Pot */}
-      <ellipse cx="90" cy="160" rx="40" ry="12" fill="#a3a3a3" />
-      <rect x="50" y="140" width="80" height="20" rx="10" fill="#d1fae5" />
-      {/* Trunk */}
-      <rect x="88" y="110" width="8" height="30" rx="4" fill="#7c3f00" />
-      {/* Growth stages */}
-      {/* Seedling: small */}
-      {growthStage >= 0 && <ellipse cx="92" cy="110" rx="8" ry="4" fill="#22c55e" />}
-      {/* Sapling: add branch */}
-      {growthStage >= 1 && <rect x="90" y="90" width="6" height="20" rx="3" fill="#7c3f00" />}
-      {growthStage >= 1 && <ellipse cx="93" cy="90" rx="12" ry="6" fill="#16a34a" />}
-      {/* Young tree: more leaves */}
-      {growthStage >= 2 && <ellipse cx="105" cy="80" rx="10" ry="5" fill="#22c55e" />}
-      {growthStage >= 2 && <ellipse cx="80" cy="80" rx="10" ry="5" fill="#22c55e" />}
-      {/* Mature tree: flowers */}
-      {growthStage >= 3 && <circle cx="100" cy="80" r="3" fill="#fbbf24" />}
-      {growthStage >= 3 && <circle cx="85" cy="80" r="3" fill="#fbbf24" />}
-    </svg>
-  );
-}
-
-function ReflectionModal({ open, onClose, duration, onSaved }: { open: boolean; onClose: () => void; duration: number; onSaved: () => void }) {
+// Reflection Modal Component
+function ReflectionModal({ 
+  open, 
+  onClose, 
+  duration, 
+  userEmail, 
+  onSaved 
+}: { 
+  open: boolean; 
+  onClose: () => void; 
+  duration: number; 
+  userEmail?: string; 
+  onSaved: () => void 
+}) {
   const [focused, setFocused] = useState<boolean | null>(null);
   const [distractions, setDistractions] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function saveReflection() {
+    if (!userEmail) {
+      toast.error("Please log in to save reflection");
+      return;
+    }
+    
     setLoading(true);
     try {
-      const res = await fetch("/api/reflection", {
+      const res = await fetch("/api/reflection-final", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stayedFocused: focused, distractions, duration }),
+        body: JSON.stringify({ 
+          stayedFocused: focused, 
+          distractions, 
+          duration,
+          userEmail 
+        }),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("Reflection saved!", { icon: "🍃", style: { background: "#dcfce7", color: "#166534" } });
+        toast.success("Reflection saved!", { 
+          icon: "🍃", 
+          style: { background: "#dcfce7", color: "#166534" } 
+        });
         onSaved();
         onClose();
       } else {
@@ -382,34 +569,52 @@ function ReflectionModal({ open, onClose, duration, onSaved }: { open: boolean; 
 
   return (
     <motion.div
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 80, opacity: 0 }}
-      transition={{ duration: 0.5, type: "spring" }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     >
-      <div className="max-w-md w-full bg-white/70 backdrop-blur-md rounded-2xl shadow-2xl p-8 flex flex-col items-center">
-        <h2 className="text-2xl font-bold text-green-800 mb-4 text-center">Session Reflection</h2>
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="max-w-md w-full bg-black/40 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20 text-white"
+      >
+        <h2 className="text-2xl font-bold text-emerald-400 mb-4 text-center">Session Reflection</h2>
         <div className="mb-4 w-full">
-          <label className="block font-semibold text-green-900 mb-2">Did you stay focused?</label>
+          <label className="block font-semibold text-white/90 mb-2">Did you stay focused?</label>
           <div className="flex gap-4">
-            <label className="flex items-center gap-2">
-              <input type="radio" name="focused" checked={focused === true} onChange={() => setFocused(true)} />
+            <label className="flex items-center gap-2 text-white/80 font-medium cursor-pointer">
+              <input 
+                type="radio" 
+                name="focused" 
+                checked={focused === true} 
+                onChange={() => setFocused(true)}
+                className="accent-emerald-500"
+              />
               Yes
             </label>
-            <label className="flex items-center gap-2">
-              <input type="radio" name="focused" checked={focused === false} onChange={() => setFocused(false)} />
+            <label className="flex items-center gap-2 text-white/80 font-medium cursor-pointer">
+              <input 
+                type="radio" 
+                name="focused" 
+                checked={focused === false} 
+                onChange={() => setFocused(false)}
+                className="accent-emerald-500"
+              />
               No
             </label>
           </div>
         </div>
         <div className="mb-6 w-full">
-          <label className="block font-semibold text-green-900 mb-2">What distracted you? <span className="text-gray-500 font-normal">(optional)</span></label>
+          <label className="block font-semibold text-white/90 mb-2">
+            What distracted you? <span className="text-white/60 font-normal">(optional)</span>
+          </label>
           <input
             type="text"
             value={distractions}
             onChange={e => setDistractions(e.target.value)}
-            className="w-full rounded-lg border border-green-300 bg-white/80 px-4 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200 text-base shadow-sm"
+            className="w-full rounded-lg border border-white/30 bg-black/20 backdrop-blur-sm px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all duration-200 text-base"
             placeholder="e.g. phone, noise, thoughts..."
             disabled={loading}
           />
@@ -417,24 +622,95 @@ function ReflectionModal({ open, onClose, duration, onSaved }: { open: boolean; 
         <div className="flex gap-4 w-full">
           <motion.button
             onClick={saveReflection}
-            className="bg-green-600 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-300 cursor-pointer"
-            whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #bbf7d0" }}
-            whileTap={{ scale: 0.97 }}
+            className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-emerald-300 disabled:opacity-50"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             disabled={loading || focused === null}
           >
             {loading ? "Saving..." : "Save Reflection"}
           </motion.button>
           <motion.button
             onClick={onClose}
-            className="bg-gray-400 text-white px-6 py-2 rounded-full font-bold shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-gray-300 cursor-pointer"
-            whileHover={{ scale: 1.08, boxShadow: "0 8px 32px 0 #d1d5db" }}
-            whileTap={{ scale: 0.97 }}
+            className="flex-1 bg-slate-600 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-bold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-slate-300"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             disabled={loading}
           >
             Cancel
           </motion.button>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
-} 
+}
+
+// Custom Time Input Component
+function CustomTimeInput({ 
+  onSubmit, 
+  onCancel, 
+  initialMinutes 
+}: { 
+  onSubmit: (minutes: number) => void; 
+  onCancel: () => void; 
+  initialMinutes: number;
+}) {
+  const [inputValue, setInputValue] = useState(initialMinutes.toString());
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const minutes = parseInt(inputValue);
+    if (!isNaN(minutes)) {
+      onSubmit(minutes);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onCancel();
+    }
+  };
+
+  return (
+    <motion.form
+      onSubmit={handleSubmit}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex flex-col items-center space-y-4"
+    >
+      <input
+        ref={inputRef}
+        type="number"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="text-6xl font-bold text-center bg-transparent text-white border-b-2 border-emerald-400 focus:outline-none focus:border-emerald-300 w-48"
+        placeholder="25"
+        min="1"
+        max="300"
+      />
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
+        >
+          Set
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </motion.form>
+  );
+}  

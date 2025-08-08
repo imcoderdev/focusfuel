@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --sidebar-width: 256px; /* Default sidebar width */
   /* Todoist/Reactist variables */
   --reactist-bg-aside: #fafafa;
   --reactist-border-radius-small: 5px;
@@ -30,6 +31,26 @@ body {
   color: var(--foreground);
   font-family: var(--reactist-font-family), Arial, Helvetica, sans-serif;
   font-size: 13px;
+  overflow-x: hidden; /* Prevent horizontal scroll on mobile */
+}
+
+/* Mobile sidebar overrides */
+@media (max-width: 767px) {
+  .mobile-sidebar {
+    position: fixed !important;
+    z-index: 9999 !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+  
+  .mobile-overlay {
+    position: fixed !important;
+    z-index: 9998 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+  }
 }
 
 .todoist-sidebar {
