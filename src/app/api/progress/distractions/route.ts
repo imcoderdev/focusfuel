@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     where: { userId: user.id, sessionDate: { gte: start } },
   });
   const counts: Record<string, number> = {};
-  reflections.forEach(r => {
+  reflections.forEach((r: any) => {
     if (r.distractions) {
       r.distractions.split(/,|;/).forEach(d => {
         const key = d.trim().toLowerCase();

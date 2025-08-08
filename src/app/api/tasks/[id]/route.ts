@@ -11,8 +11,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 // Service role client to bypass RLS
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const url = new URL(request.url);
     const userEmail = url.searchParams.get('userEmail');
     
@@ -72,8 +73,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const url = new URL(request.url);
     const userEmail = url.searchParams.get('userEmail');
     
@@ -96,7 +98,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     const { data: deletedTask, error: deleteError } = await supabase
       .from('Task')
       .delete()
-      .eq('id', parseInt(params.id))
+      .eq('id', parseInt(id))
       .eq('userId', user.id)
       .select()
       .single();
