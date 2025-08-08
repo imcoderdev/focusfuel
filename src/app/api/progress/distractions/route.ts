@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const counts: Record<string, number> = {};
   reflections.forEach((r: any) => {
     if (r.distractions) {
-      r.distractions.split(/,|;/).forEach(d => {
+      r.distractions.split(/,|;/).forEach((d: any) => {
         const key = d.trim().toLowerCase();
         if (key) counts[key] = (counts[key] || 0) + 1;
       });

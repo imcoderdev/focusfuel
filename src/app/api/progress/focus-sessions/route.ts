@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
     d.setDate(start.getDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
     const minutes = sessions
-      .filter(s => s.startTime.toISOString().slice(0, 10) === dateStr)
-      .reduce((sum, s) => sum + Math.round(s.duration / 60), 0);
+      .filter((s: any) => s.startTime.toISOString().slice(0, 10) === dateStr)
+      .reduce((sum: any, s: any) => sum + Math.round(s.duration / 60), 0);
     return { date: dateStr, minutes };
   });
   return NextResponse.json(result);
