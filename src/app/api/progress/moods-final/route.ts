@@ -79,7 +79,10 @@ export async function GET(request: NextRequest) {
       
       let score = 3; // Default neutral mood
       if (dayMoods.length > 0) {
-        const totalScore = dayMoods.reduce((sum: number, mood: { mood: string }) => sum + (moodScoreMap[mood.mood] || 3), 0);
+        const totalScore = dayMoods.reduce((sum: number, mood: { mood: string }) => {
+          const moodType = mood.mood as keyof typeof moodScoreMap;
+          return sum + (moodScoreMap[moodType] || 3);
+        }, 0);
         score = Math.round((totalScore / dayMoods.length) * 10) / 10; // Round to 1 decimal
       }
       

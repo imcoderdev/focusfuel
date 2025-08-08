@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
     d.setDate(start.getDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
     const dayMoods = moods.filter((m: any) => m.createdAt.toISOString().slice(0, 10) === dateStr);
-    const score = dayMoods.length ? Math.round(dayMoods.reduce((sum: any, m: any) => sum + (moodScores[m.mood] || 3), 0) / dayMoods.length) : 0;
+    const score = dayMoods.length ? Math.round(dayMoods.reduce((sum: any, m: any) => {
+      const mood = m.mood as keyof typeof moodScores;
+      return sum + (moodScores[mood] || 3);
+    }, 0) / dayMoods.length) : 0;
     return { date: dateStr, score };
   });
   return NextResponse.json(result);
