@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useEffect, useState, RefObject } from "react";
+import { useEffect, useState, RefObject, useMemo } from "react";
 
 interface ParallaxBackgroundProps {
   scrollRef?: RefObject<HTMLDivElement>;
@@ -39,9 +39,8 @@ export default function ParallaxBackground({ scrollRef }: ParallaxBackgroundProp
     delay: Math.random() * 5,
   }));
 
-  const fireflyTransforms = fireflies.map(firefly => 
-    useTransform(scrollXProgress, [0, 1], [0, -firefly.moveAmount])
-  );
+  // Fixed: Create static transforms to avoid calling hooks in loops
+  const scrollTransform = useTransform(scrollXProgress, [0, 1], [0, -200]);
 
   // Don't render complex animations until mounted
   if (!isMounted) {
@@ -194,7 +193,7 @@ export default function ParallaxBackground({ scrollRef }: ParallaxBackgroundProp
           style={{
             left: `${firefly.left}%`,
             top: `${firefly.top}%`,
-            x: fireflyTransforms[i],
+            x: scrollTransform,
           }}
           animate={{
             x: [0, firefly.animateX],
