@@ -17,10 +17,22 @@ export async function GET(request: NextRequest) {
 
     console.log(`🌳 Fetching forest data for user: ${userEmail}`);
 
+    // First find the user by email
+    const user = await prisma.user.findUnique({
+      where: { email: userEmail }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 404 }
+      );
+    }
+
     // Fetch all completed focus sessions for the user
     const sessions = await prisma.focusSession.findMany({
       where: {
-        userEmail: userEmail,
+        userId: user.id,
         // Only get completed sessions (you might want to add a 'completed' field to your schema)
       },
       orderBy: {
