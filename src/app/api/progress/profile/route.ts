@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   const moods = await prisma.mood.findMany({ where: { userId: user.id } });
   // Map moods to scores: happy=5, focused=4, meh=3, tired=2, stressed=2, sad=1
   const moodScoreMap: Record<string, number> = { happy: 5, focused: 4, meh: 3, tired: 2, stressed: 2, sad: 1 };
-  const moodScores = moods.map((m: { mood: string }) => moodScoreMap[m.mood] || 3);
+  const moodScores = moods.map((m: any) => moodScoreMap[m.mood as string] || 3);
   const averageMoodScore = moodScores.length ? (moodScores.reduce((a: number, b: number) => a + b, 0) / moodScores.length) : null;
   return NextResponse.json({
     name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
