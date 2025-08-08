@@ -16,7 +16,7 @@ import {
   HiOutlineChevronDoubleRight
 } from "react-icons/hi2";
 import { PiTreeEvergreen } from "react-icons/pi";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSupabaseAuth } from "@/components/AuthProvider";
 
 interface NavItem {
