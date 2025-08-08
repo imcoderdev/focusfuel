@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
           id,
           email,
           name,
-          avatar_url
+          avatarUrl: avatar_url
         }
       });
     } else {
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         data: {
           email,
           name,
-          avatar_url
+          avatarUrl: avatar_url
         }
       });
     }

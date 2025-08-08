@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
-    const count = tasks.filter(t => t.createdAt.toISOString().slice(0, 10) === dateStr).length;
+    const count = tasks.filter((t: { createdAt: Date }) => t.createdAt.toISOString().slice(0, 10) === dateStr).length;
     return { date: dateStr, count };
   });
   return NextResponse.json(result);

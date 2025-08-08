@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
   const reflections = await prisma.reflection.findMany({ where: { userId: user.id, sessionDate: { gte: start } } });
   const moods = await prisma.mood.findMany({ where: { userId: user.id, createdAt: { gte: start } } });
   // Summarize
-  const focusMinutes = sessions.reduce((sum, s) => sum + Math.round(s.duration / 60), 0);
+  const focusMinutes = sessions.reduce((sum: number, s: { duration: number }) => sum + Math.round(s.duration / 60), 0);
   const tasksDone = tasks.length;
-  const distractions = reflections.map(r => r.distractions).filter(Boolean).join(", ");
+  const distractions = reflections.map((r: { distractions: string | null }) => r.distractions).filter(Boolean).join(", ");
   const moodCounts: Record<string, number> = {};
-  moods.forEach(m => { moodCounts[m.mood] = (moodCounts[m.mood] || 0) + 1; });
+  moods.forEach((m: { mood: string }) => { moodCounts[m.mood] = (moodCounts[m.mood] || 0) + 1; });
   // Build prompt
   const prompt = `Summarize this user's week for a productivity dashboard:\n- Focused for ${focusMinutes} minutes\n- Completed ${tasksDone} tasks\n- Top distractions: ${distractions || "none"}\n- Mood breakdown: ${Object.entries(moodCounts).map(([k, v]) => `${k}: ${v}`).join(", ")}\nGive a short, positive recap and one actionable suggestion.`;
   const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey;

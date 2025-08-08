@@ -9,10 +9,10 @@ import { format, isToday, isTomorrow, isPast, isThisWeek } from "date-fns";
 interface Task {
   id: string;
   title: string;
-  description?: string;
-  priority: 'High' | 'Medium' | 'Low';
-  completed: boolean;
-  dueDate?: string;
+  description?: string | null;
+  priority?: 'High' | 'Medium' | 'Low';
+  completed?: boolean;
+  dueDate?: string | Date | null;
 }
 
 interface TaskCardProps {
@@ -45,7 +45,7 @@ const priorityConfig = {
 
 export default function TaskCard({ task, onToggleComplete, onEdit, onDelete }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const priority = priorityConfig[task.priority];
+  const priority = priorityConfig[task.priority || 'Medium'];
 
   return (
     <motion.div
@@ -67,7 +67,7 @@ export default function TaskCard({ task, onToggleComplete, onEdit, onDelete }: T
       <div className="flex items-start space-x-3">
         {/* Custom Animated Checkbox */}
         <CustomCheckbox 
-          checked={task.completed}
+          checked={task.completed || false}
           onChange={() => onToggleComplete(task.id)}
         />
 

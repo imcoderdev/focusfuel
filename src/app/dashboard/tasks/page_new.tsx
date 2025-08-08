@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { FiZap, FiPlus, FiSparkles } from "react-icons/fi";
+import { FiZap, FiPlus, FiStar } from "react-icons/fi";
 import TaskCard from "@/components/TaskCard";
 import AddTaskModal from "./AddTaskModal";
 import toast from "react-hot-toast";
@@ -212,7 +212,7 @@ export default function TasksPage() {
                 <>
                   <FiZap className="w-6 h-6" />
                   <span>Magic Sort with AI</span>
-                  <FiSparkles className="w-5 h-5" />
+                  <FiStar className="w-5 h-5" />
                 </>
               )}
             </motion.button>
@@ -255,7 +255,7 @@ export default function TasksPage() {
               animate={{ opacity: 1, y: 0 }}
               className="text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700"
             >
-              <FiSparkles className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+              <FiStar className="w-12 h-12 text-slate-400 mx-auto mb-4" />
               <h3 className="text-xl font-medium text-slate-300 mb-2">No active tasks</h3>
               <p className="text-slate-400 mb-6">Create your first task to get started with AI planning</p>
               <motion.button

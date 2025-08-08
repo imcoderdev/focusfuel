@@ -29,8 +29,8 @@ export async function PATCH(request: NextRequest) {
         ...(image !== undefined ? { image } : {}),
       },
     });
-    return NextResponse.json({ name: updated.name, email: updated.email, image: updated.image });
-  } catch (e) {
+    return NextResponse.json({ name: updated.name, email: updated.email, image: updated.avatarUrl });
+  } catch (e: any) {
     console.error("Profile update error:", e);
     return NextResponse.json({ error: "Failed to update profile", details: e?.message || e?.toString() }, { status: 500 });
   }

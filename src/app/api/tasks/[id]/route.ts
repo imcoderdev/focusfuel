@@ -52,7 +52,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { data: updatedTask, error: updateError } = await supabase
       .from('Task')
       .update(data)
-      .eq('id', parseInt(params.id))
+      .eq('id', parseInt(id))
       .eq('userId', user.id)
       .select()
       .single();

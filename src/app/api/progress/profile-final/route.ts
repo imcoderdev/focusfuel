@@ -96,11 +96,11 @@ export async function GET(request: NextRequest) {
     const moodScoreMap: Record<string, number> = { 
       happy: 5, focused: 4, meh: 3, tired: 2, stressed: 2, sad: 1 
     };
-    const totalMoodScore = moods?.reduce((sum, m) => sum + (moodScoreMap[m.mood] || 3), 0) || 0;
+    const totalMoodScore = moods?.reduce((sum: number, m: { mood: string }) => sum + (moodScoreMap[m.mood] || 3), 0) || 0;
     const averageMood = moods?.length ? totalMoodScore / moods.length : 3;
 
     return NextResponse.json({
-      name: user.name,
+      name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
       email: user.email,
       bonsais,
       totalFocusTimeMinutes,

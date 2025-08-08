@@ -22,8 +22,6 @@ export default function BonsaiCanvas({ growthStage }: BonsaiCanvasProps) {
       scale: 1,
       transition: { 
         duration: 1.2,
-        ease: "easeOut",
-        when: "beforeChildren",
         staggerChildren: 0.3
       }
     }
@@ -35,7 +33,7 @@ export default function BonsaiCanvas({ growthStage }: BonsaiCanvasProps) {
       pathLength: 1, 
       opacity: 1,
       transition: { 
-        pathLength: { duration: 2, ease: [0.4, 0.0, 0.2, 1] },
+        pathLength: { duration: 2 },
         opacity: { duration: 0.5 }
       }
     }
@@ -48,7 +46,6 @@ export default function BonsaiCanvas({ growthStage }: BonsaiCanvasProps) {
       opacity: 1,
       transition: { 
         duration: 1,
-        ease: [0.4, 0.0, 0.2, 1],
         delay: 0.5
       }
     }
@@ -62,7 +59,6 @@ export default function BonsaiCanvas({ growthStage }: BonsaiCanvasProps) {
       rotate: 0,
       transition: { 
         duration: 1.5,
-        ease: [0.4, 0.0, 0.2, 1],
         delay: 1
       }
     }

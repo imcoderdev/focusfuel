@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const reflections = reflectionsResult.data || [];
 
     // Generate AI-like recap based on data
-    let recap = `Hey ${user.name}! Here's your week in review:\n\n`;
+    let recap = `Hey ${user.user_metadata?.name || user.email?.split('@')[0] || 'User'}! Here's your week in review:\n\n`;
 
     // Focus sessions
     const focusCount = focusSessions.length;
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       const moodScoreMap: Record<string, number> = { 
         happy: 5, focused: 4, meh: 3, tired: 2, stressed: 2, sad: 1 
       };
-      const avgMood = moods.reduce((sum, m) => sum + (moodScoreMap[m.mood] || 3), 0) / moods.length;
+      const avgMood = moods.reduce((sum: number, m: { mood: string }) => sum + (moodScoreMap[m.mood] || 3), 0) / moods.length;
       
       if (avgMood >= 4) {
         recap += "😊 Your mood has been great this week! Keep that positive energy flowing.\n\n";
