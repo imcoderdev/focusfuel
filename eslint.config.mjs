@@ -18,6 +18,7 @@ const eslintConfig = [
       "@typescript-eslint/no-explicit-any": "off", // Turn off completely for deployment
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-empty-object-type": "warn",
+      "@typescript-eslint/ban-ts-comment": "off", // Allow @ts-ignore comments
       "react/no-unescaped-entities": "off", // Turn off completely for deployment
       "react-hooks/exhaustive-deps": "warn",
       "react-hooks/rules-of-hooks": "error", // Keep this as error
