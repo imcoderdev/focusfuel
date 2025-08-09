@@ -45,29 +45,104 @@ export async function POST(req: Request) {
 
     // Handle /start command
     if (text === "/start") {
-      replyMessage = `🎯 Hello ${firstName}! 
+      replyMessage = `🎓 <b>Welcome to FocusFuel Academic Coaching!</b>
 
-Your unique Chat ID is: <b>${chatId}</b>
+Hello ${firstName}! I'm your child's personal academic coach and productivity mentor. 
 
-Please copy and paste this number into the FocusFuel app to enable weekly reports about your child's productivity progress.
+🔑 <b>Your Chat ID:</b> <code>${chatId}</code>
 
-You'll receive updates about:
-📚 Study sessions completed
-🌳 Digital trees grown
-📈 Focus improvement trends
-⏰ Time spent in productive activities
+<i>Please copy this number and paste it into the FocusFuel app under "Parent Reports" to connect your child's account.</i>
 
-<b>💬 Interactive Commands:</b>
-• Type "progress" or "report" - Get current week's progress
-• Type "today" - Get today's activity
-• Type "focus" - Get focus session stats
-• Type "tasks" or "homework" - Get task completion status
-• Type "mood" - Get recent mood updates
-• Type "help" - See all available commands
+📚 <b>What I Can Help You With:</b>
+As your child's academic coach, I have access to comprehensive learning analytics and can provide insights about:
 
-Thank you for supporting your child's growth! 🌟`;
+🎯 <b>Academic Performance:</b>
+• "How is my child doing with their studies?"
+• "What tasks is my child working on?"
+• "How much time did they spend studying today?"
+
+📈 <b>Learning Patterns:</b>
+• "What are their study habits like?"
+• "When is their most productive time?"
+• "How consistent are they with their work?"
+
+😊 <b>Wellbeing & Motivation:</b>
+• "How is their mood lately?"
+• "Are they feeling stressed or confident?"
+• "What challenges are they facing?"
+
+📊 <b>Progress Tracking:</b>
+• "Show me this week's progress"
+• "How do they compare to last week?"
+• "What areas need improvement?"
+
+💡 <b>Coaching Strategies:</b>
+• "How can I help them focus better?"
+• "What study strategies work for them?"
+• "Should I be concerned about anything?"
+
+<b>🗣️ Just ask me naturally!</b> I understand questions like:
+• "What did my child accomplish today?"
+• "Is my child keeping up with their tasks?"
+• "How can I support their learning better?"
+
+I'll analyze their complete learning data and respond as their dedicated academic coach. Let's work together to support their success! 🌟
+
+<i>Type any question about your child's learning journey to get started!</i>`;
     }
-    // Handle any other message (interactive queries)
+    // Handle help command
+    else if (text.toLowerCase().includes('help') || text === '/help') {
+      replyMessage = `🎓 <b>FocusFuel Academic Coach - Help Center</b>
+
+Hi ${firstName}! I'm here to provide detailed insights about your child's learning journey. Here's how I can help:
+
+🗣️ <b>Natural Conversation:</b>
+Just ask me anything naturally! I understand questions like:
+
+📚 <b>About Their Studies:</b>
+• "What is my child working on today?"
+• "How much time did they spend studying?"
+• "Are they completing their tasks?"
+• "What homework do they have?"
+
+📈 <b>Progress & Performance:</b>
+• "How is my child doing this week?"
+• "Show me their progress report"
+• "How do they compare to last week?"
+• "What are their strengths and challenges?"
+
+⏰ <b>Study Habits & Patterns:</b>
+• "When does my child study best?"
+• "How long are their focus sessions?"
+• "Are they consistent with their studies?"
+• "What's their daily routine like?"
+
+😊 <b>Mood & Wellbeing:</b>
+• "How is my child feeling lately?"
+• "Are they stressed or motivated?"
+• "What's affecting their mood?"
+
+💡 <b>Coaching Advice:</b>
+• "How can I help them focus better?"
+• "What study strategies work for them?"
+• "Should I be concerned about anything?"
+• "How can I motivate them?"
+
+🎯 <b>Specific Insights:</b>
+• "What did they accomplish today?"
+• "What tasks are pending?"
+• "How much screen time vs study time?"
+
+<b>💬 I analyze their complete data including:</b>
+✅ All focus sessions and study time
+✅ Task creation and completion patterns  
+✅ Mood tracking and trends
+✅ Study reflections and insights
+✅ Learning challenges and breakthroughs
+
+Just type your question naturally - I'm here to help you support your child's academic success! 🌟`;
+    }
+    // Handle any other message (natural language queries)
     else {
       console.log("Processing interactive query...");
       
@@ -164,58 +239,170 @@ Then you'll be able to get real-time updates! 🚀`;
 
 async function generateParentResponse(text: string, user: any, parentName: string): Promise<string> {
   const studentName = user.name || "Your child";
-  console.log(`Generating AI response for query: "${text}" about student: ${studentName}`);
+  console.log(`Generating AI coach response for query: "${text}" about student: ${studentName}`);
 
   try {
-    // Gather all student data for AI analysis
+    // Gather comprehensive student data from ALL time periods for deep analysis
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    const [focusData, taskData, moodData, todayFocusData, todayTaskData] = await Promise.all([
-      supabase.from("FocusSession").select("duration, createdAt").eq("userId", user.id).gte("createdAt", weekAgo.toISOString()),
-      supabase.from("Task").select("*").eq("userId", user.id).gte("createdAt", weekAgo.toISOString()),
-      supabase.from("Mood").select("mood, createdAt").eq("userId", user.id).gte("createdAt", weekAgo.toISOString()),
-      supabase.from("FocusSession").select("duration").eq("userId", user.id).gte("createdAt", today),
-      supabase.from("Task").select("*").eq("userId", user.id).eq("completed", true).gte("completedAt", today)
+    // Fetch ALL available data for comprehensive analysis
+    const [
+      allFocusData, 
+      allTaskData, 
+      allMoodData, 
+      todayFocusData, 
+      todayTaskData,
+      yesterdayTaskData,
+      weeklyFocusData,
+      monthlyFocusData,
+      recentReflections,
+      emergencyLogs
+    ] = await Promise.all([
+      // All focus sessions ever
+      supabase.from("FocusSession").select("*").eq("userId", user.id).order("createdAt", { ascending: false }),
+      // All tasks ever
+      supabase.from("Task").select("*").eq("userId", user.id).order("createdAt", { ascending: false }),
+      // All mood entries ever
+      supabase.from("Mood").select("*").eq("userId", user.id).order("createdAt", { ascending: false }),
+      // Today's focus
+      supabase.from("FocusSession").select("*").eq("userId", user.id).gte("createdAt", today),
+      // Today's tasks
+      supabase.from("Task").select("*").eq("userId", user.id).gte("createdAt", today),
+      // Yesterday's completed tasks
+      supabase.from("Task").select("*").eq("userId", user.id).eq("completed", true).gte("completedAt", yesterday).lt("completedAt", today),
+      // Weekly focus
+      supabase.from("FocusSession").select("*").eq("userId", user.id).gte("createdAt", weekAgo.toISOString()),
+      // Monthly focus for trends
+      supabase.from("FocusSession").select("*").eq("userId", user.id).gte("createdAt", monthAgo.toISOString()),
+      // Recent reflections
+      supabase.from("Reflection").select("*").eq("userId", user.id).order("createdAt", { ascending: false }).limit(5),
+      // Recent emergency help requests
+      supabase.from("EmergencyLog").select("*").eq("userId", user.id).order("createdAt", { ascending: false }).limit(3)
     ]);
 
-    // Process the data for AI context
-    const weeklyFocusMinutes = focusData.data?.reduce((sum, s) => sum + (s.duration || 0), 0) || 0;
-    const weeklyTasksTotal = taskData.data?.length || 0;
-    const weeklyTasksCompleted = taskData.data?.filter(t => t.completed)?.length || 0;
-    const weeklyMoods = moodData.data || [];
-    const todayFocusMinutes = todayFocusData.data?.reduce((sum, s) => sum + (s.duration || 0), 0) || 0;
-    const todayTasksCompleted = todayTaskData.data?.length || 0;
+    // Process comprehensive data for AI coach analysis
+    const allFocus = allFocusData.data || [];
+    const allTasks = allTaskData.data || [];
+    const allMoods = allMoodData.data || [];
+    const todayFocus = todayFocusData.data || [];
+    const todayTasks = todayTaskData.data || [];
+    const yesterdayTasks = yesterdayTaskData.data || [];
+    const weeklyFocus = weeklyFocusData.data || [];
+    const monthlyFocus = monthlyFocusData.data || [];
+    const reflections = recentReflections.data || [];
+    const emergencies = emergencyLogs.data || [];
+
+    // Calculate comprehensive metrics
+    const totalFocusTime = allFocus.reduce((sum, s) => sum + (s.duration || 0), 0);
+    const totalFocusHours = Math.floor(totalFocusTime / 3600);
+    const avgSessionLength = allFocus.length > 0 ? Math.floor(totalFocusTime / allFocus.length / 60) : 0;
     
-    const avgMood = weeklyMoods.length > 0 
-      ? (weeklyMoods.reduce((sum, m) => sum + m.mood, 0) / weeklyMoods.length).toFixed(1)
+    const weeklyFocusTime = weeklyFocus.reduce((sum, s) => sum + (s.duration || 0), 0);
+    const monthlyFocusTime = monthlyFocus.reduce((sum, s) => sum + (s.duration || 0), 0);
+    
+    const todayFocusTime = todayFocus.reduce((sum, s) => sum + (s.duration || 0), 0);
+    const yesterdayFocusTime = allFocus
+      .filter(s => new Date(s.createdAt).toISOString().split('T')[0] === yesterday)
+      .reduce((sum, s) => sum + (s.duration || 0), 0);
+
+    // Task analysis
+    const totalTasks = allTasks.length;
+    const completedTasks = allTasks.filter(t => t.completed).length;
+    const overallCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    const weeklyTasks = allTasks.filter(t => new Date(t.createdAt) >= weekAgo);
+    const weeklyCompletedTasks = weeklyTasks.filter(t => t.completed);
+    const weeklyCompletionRate = weeklyTasks.length > 0 ? Math.round((weeklyCompletedTasks.length / weeklyTasks.length) * 100) : 0;
+    
+    const pendingTasks = allTasks.filter(t => !t.completed).slice(0, 5);
+    const recentCompletedTasks = allTasks.filter(t => t.completed).slice(0, 5);
+
+    // Mood analysis
+    const recentMoods = allMoods.slice(0, 7);
+    const avgMood = recentMoods.length > 0 
+      ? (recentMoods.reduce((sum, m) => {
+          const moodValue = typeof m.mood === 'string' ? 
+            ({ happy: 5, focused: 4, meh: 3, tired: 2, stressed: 2, sad: 1 }[m.mood] || 3) : 
+            m.mood;
+          return sum + moodValue;
+        }, 0) / recentMoods.length).toFixed(1)
       : "No data";
 
-    // Prepare context for Gemini AI
+    const todayMood = allMoods.find(m => new Date(m.createdAt).toISOString().split('T')[0] === today);
+    const yesterdayMood = allMoods.find(m => new Date(m.createdAt).toISOString().split('T')[0] === yesterday);
+
+    // Productivity patterns
+    const focusByDay = {};
+    allFocus.forEach(session => {
+      const day = new Date(session.createdAt).toLocaleDateString('en-US', { weekday: 'long' });
+      focusByDay[day] = (focusByDay[day] || 0) + (session.duration || 0);
+    });
+    const bestDay = Object.keys(focusByDay).reduce((a, b) => focusByDay[a] > focusByDay[b] ? a : b, 'Monday');
+
+    // Recent activity patterns
+    const last5Sessions = allFocus.slice(0, 5);
+    const sessionTrend = last5Sessions.length >= 2 ? 
+      (last5Sessions[0].duration > last5Sessions[1].duration ? "improving" : "declining") : "stable";
+
+    // Study consistency (days with activity in last 7 days)
+    const activeDaysThisWeek = new Set(
+      [...weeklyFocus, ...weeklyTasks].map(item => 
+        new Date(item.createdAt).toISOString().split('T')[0]
+      )
+    ).size;
+
+    // Prepare comprehensive context for AI coach
     const studentDataContext = `
-Student: ${studentName}
-Email: ${user.email}
-Parent: ${parentName}
+STUDENT PROFILE:
+- Name: ${studentName}
+- Email: ${user.email}
+- Parent Asking: ${parentName}
+- Account Activity: ${allFocus.length} total focus sessions, ${totalTasks} total tasks created
+- Study Consistency: Active ${activeDaysThisWeek}/7 days this week
 
-WEEKLY DATA (Last 7 days):
-- Total Focus Time: ${Math.floor(weeklyFocusMinutes / 60)} hours ${weeklyFocusMinutes % 60} minutes
-- Focus Sessions: ${focusData.data?.length || 0}
-- Tasks Created: ${weeklyTasksTotal}
-- Tasks Completed: ${weeklyTasksCompleted}
-- Completion Rate: ${weeklyTasksTotal > 0 ? Math.round((weeklyTasksCompleted / weeklyTasksTotal) * 100) : 0}%
-- Average Mood: ${avgMood}/10
-- Mood Entries: ${weeklyMoods.length}
+COMPREHENSIVE PERFORMANCE ANALYTICS:
 
-TODAY'S DATA:
-- Focus Time Today: ${Math.floor(todayFocusMinutes / 60)} hours ${todayFocusMinutes % 60} minutes
-- Tasks Completed Today: ${todayTasksCompleted}
+FOCUS & PRODUCTIVITY:
+- Total Focus Time (All Time): ${totalFocusHours} hours ${Math.floor((totalFocusTime % 3600) / 60)} minutes
+- Average Session Length: ${avgSessionLength} minutes
+- Total Sessions: ${allFocus.length}
+- Weekly Focus: ${Math.floor(weeklyFocusTime / 3600)}h ${Math.floor((weeklyFocusTime % 3600) / 60)}m
+- Monthly Focus: ${Math.floor(monthlyFocusTime / 3600)}h ${Math.floor((monthlyFocusTime % 3600) / 60)}m
+- Today's Focus: ${Math.floor(todayFocusTime / 60)} minutes (${todayFocus.length} sessions)
+- Yesterday's Focus: ${Math.floor(yesterdayFocusTime / 60)} minutes
+- Focus Trend: ${sessionTrend}
+- Best Study Day: ${bestDay}
 
-RECENT ACTIVITIES:
-${focusData.data?.slice(-3).map(f => `- Focus session: ${Math.floor((f.duration || 0) / 60)} minutes on ${new Date(f.createdAt).toLocaleDateString()}`).join('\n') || '- No recent focus sessions'}
-${taskData.data?.slice(-3).map(t => `- Task: "${t.title}" ${t.completed ? '✅ Completed' : '⏳ Pending'} on ${new Date(t.createdAt).toLocaleDateString()}`).join('\n') || '- No recent tasks'}
+TASK MANAGEMENT:
+- Total Tasks Created: ${totalTasks}
+- Tasks Completed: ${completedTasks} (${overallCompletionRate}% overall rate)
+- Weekly Completion Rate: ${weeklyCompletionRate}%
+- Today's Tasks: ${todayTasks.length} created
+- Yesterday Completed: ${yesterdayTasks.length} tasks
+- Current Pending Tasks: ${pendingTasks.map(t => `"${t.title}"`).join(', ') || 'None'}
+- Recent Completions: ${recentCompletedTasks.map(t => `"${t.title}" (${new Date(t.completedAt || t.createdAt).toLocaleDateString()})`).join(', ') || 'None'}
+
+MOOD & WELLBEING:
+- Current Mood Trend: ${avgMood}/10 average (last 7 entries)
+- Today's Mood: ${todayMood ? `${todayMood.mood}/10` : 'Not recorded yet'}
+- Yesterday's Mood: ${yesterdayMood ? `${yesterdayMood.mood}/10` : 'Not recorded'}
+- Recent Mood Pattern: ${recentMoods.slice(0, 3).map(m => `${m.mood}/10 on ${new Date(m.createdAt).toLocaleDateString()}`).join(', ') || 'Limited data'}
+
+LEARNING INSIGHTS:
+- Recent Study Reflections: ${reflections.map(r => `"${r.stayedFocused ? 'Stayed focused' : 'Got distracted'} for ${r.duration} min${r.distractions ? `, distracted by: ${r.distractions}` : ''}"`).join(' | ') || 'No reflections yet'}
+- Recent Help Requests: ${emergencies.map(e => `"${e.issue}" on ${new Date(e.createdAt).toLocaleDateString()}`).join(' | ') || 'No emergency help needed'}
+
+PRODUCTIVITY PATTERNS:
+- Study Consistency: ${activeDaysThisWeek}/7 active days this week
+- Peak Performance Day: ${bestDay}
+- Session Quality: ${sessionTrend} trend in recent sessions
+- Focus Stamina: ${avgSessionLength} min average per session
 `;
 
-    // Use Gemini AI to generate intelligent response
+    // Enhanced AI prompt for coach-like responses
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
@@ -224,27 +411,34 @@ ${taskData.data?.slice(-3).map(t => `- Task: "${t.title}" ${t.completed ? '✅ C
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `You are a helpful AI assistant for parents to track their child's study progress through a productivity app called FocusFuel.
+            text: `You are an expert educational coach and mentor with deep insights into student productivity and learning patterns. You are having a conversation with ${parentName}, the parent of ${studentName}, who is using the FocusFuel productivity app.
 
 PARENT'S QUESTION: "${text}"
 
-STUDENT DATA:
+COMPREHENSIVE STUDENT DATA:
 ${studentDataContext}
 
-INSTRUCTIONS:
-1. Answer the parent's question naturally and conversationally
-2. Use the student data to provide specific, accurate insights
-3. Be encouraging and supportive in tone
-4. Include relevant emoji and formatting for Telegram
-5. Highlight positive achievements and gently suggest improvements where needed
-6. Keep response under 300 words
-7. Use HTML formatting: <b>bold</b>, <i>italic</i> for Telegram
-8. If asking about homework/tasks, focus on completion rates and recent activity
-9. If asking about progress, give a comprehensive weekly overview
-10. If asking about today, focus on today's specific activities
-11. Always end with an encouraging note or tip for the parent
+COACHING INSTRUCTIONS:
+1. Respond as a knowledgeable, caring educational coach who has been personally working with ${studentName}
+2. Analyze the data deeply to provide meaningful insights about learning patterns, productivity trends, and growth areas
+3. Address the parent's specific question with detailed, data-backed observations
+4. Provide actionable recommendations based on the student's actual performance patterns
+5. Highlight both strengths to celebrate and areas for strategic improvement
+6. Use a warm, professional tone that shows you genuinely care about the student's success
+7. Include specific metrics and examples from the data to support your insights
+8. Suggest practical strategies that parents can implement to support their child
+9. Keep response under 400 words but be comprehensive
+10. Use HTML formatting for Telegram: <b>bold</b>, <i>italic</i>
+11. Include relevant emojis to make the response engaging
+12. Always end with encouragement and next steps
 
-Generate a personalized, intelligent response for this parent about their child ${studentName}.`
+RESPONSE STYLE:
+- Start with a warm greeting acknowledging the parent's question
+- Provide specific data-driven insights about their child's learning journey
+- Offer concrete, actionable advice
+- End with encouragement and confidence in the student's potential
+
+Generate a detailed, coach-like response that shows deep understanding of ${studentName}'s learning patterns and provides valuable guidance to ${parentName}.`
           }]
         }]
       })
@@ -252,25 +446,42 @@ Generate a personalized, intelligent response for this parent about their child 
 
     if (!response.ok) {
       console.error('Gemini API error:', await response.text());
-      // Fallback to simple response if AI fails
-      return `📊 <b>${studentName}'s Progress Update</b>
+      // Enhanced fallback with comprehensive data
+      return `📚 <b>Academic Coach Report for ${studentName}</b>
 
-⏱️ <b>This Week:</b> ${Math.floor(weeklyFocusMinutes / 60)}h ${weeklyFocusMinutes % 60}m focused
-✅ <b>Tasks:</b> ${weeklyTasksCompleted}/${weeklyTasksTotal} completed (${weeklyTasksTotal > 0 ? Math.round((weeklyTasksCompleted / weeklyTasksTotal) * 100) : 0}%)
-😊 <b>Mood:</b> ${avgMood}/10 average
+Hello ${parentName}! Here's what I'm seeing in ${studentName}'s learning journey:
 
-${weeklyFocusMinutes > 3600 ? "🌟 Excellent focus this week!" : "💪 Encourage more study time!"}`;
+📊 <b>Current Progress:</b>
+• Focus Time: ${Math.floor(weeklyFocusTime / 3600)}h this week (${Math.floor(totalFocusTime / 3600)}h total)
+• Task Success: ${weeklyCompletionRate}% completion rate this week
+• Study Pattern: Most productive on ${bestDay}
+• Consistency: Active ${activeDaysThisWeek}/7 days this week
+
+🎯 <b>Key Insights:</b>
+${avgSessionLength > 25 ? "• Excellent focus stamina - sessions average " + avgSessionLength + " minutes" : "• Building focus stamina - encourage longer sessions"}
+${weeklyCompletionRate >= 70 ? "• Strong task management skills" : "• Opportunity to improve task completion"}
+${todayFocusTime > 0 ? "• Actively studying today (" + Math.floor(todayFocusTime / 60) + " min focused)" : "• Haven't started studying today yet"}
+
+As their academic coach, I recommend: ${weeklyCompletionRate < 50 ? "breaking tasks into smaller chunks" : "maintaining current momentum"}. 
+
+Happy to discuss specific strategies! 🌟`;
     }
 
     const data = await response.json();
     const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 
-      "Sorry, I couldn't generate a detailed report right now. Please try again!";
+      "I'm analyzing your child's learning patterns. Please give me a moment to provide detailed insights!";
 
     return aiResponse;
 
   } catch (error) {
-    console.error("Error generating AI response:", error);
-    return `❌ Sorry ${parentName}, I had trouble analyzing ${studentName}'s data right now. Please try again in a moment! 🔄`;
+    console.error("Error generating AI coach response:", error);
+    return `🔄 <b>Academic Coach for ${studentName}</b>
+
+Hi ${parentName}! I'm having a brief technical moment while analyzing ${studentName}'s comprehensive learning data. 
+
+I have access to all their focus sessions, task patterns, mood trends, and study reflections. Please try your question again in just a moment, and I'll provide you with detailed insights about their academic journey! 
+
+I'm here to help you support ${studentName}'s success. 📚✨`;
   }
 }
 
