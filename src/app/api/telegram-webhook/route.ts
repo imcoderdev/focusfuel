@@ -146,30 +146,7 @@ Just type your question naturally - I'm here to help you support your child's ac
     else {
       console.log("Processing interactive query...");
       
-      // ALWAYS respond first, then try to find user data
-      // This ensures the bot responds even if there are database issues
-      let quickReply = `👋 Hi ${firstName}! I received your message: "${text}"
-
-Let me check your child's data...`;
-
-      // Send quick acknowledgment first
-      const quickResponseUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-      
-      if (!isTestMode) {
-        await fetch(quickResponseUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: quickReply,
-            parse_mode: "HTML",
-          }),
-        });
-      } else {
-        console.log("TEST MODE: Would send quick reply:", quickReply);
-      }
-
-      // Now try to find user and send detailed response
+      // Find user first to determine response
       const { data: user, error: userError } = await supabase
         .from("User")
         .select("*")
