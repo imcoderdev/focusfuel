@@ -111,11 +111,11 @@ export default function ParentalReportModal({ open, onClose }: ParentalReportMod
           <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600">
             <h3 className="text-sm font-semibold text-emerald-400 mb-3">Setup Instructions:</h3>
             <ol className="list-decimal list-inside space-y-2 text-sm text-slate-300">
-              <li>Open the Telegram app and search for our bot: <span className="font-mono bg-slate-800 px-2 py-1 rounded text-emerald-400">@YourFocusFuelBot</span></li>
-              <li>Tap <span className="font-semibold">'Start'</span> or send the message <span className="font-mono bg-slate-800 px-2 py-1 rounded">/start</span> to the bot</li>
-              <li>The bot will immediately reply with your unique Chat ID. Copy this number.</li>
-              <li>Paste your Chat ID in the field below and enable reports.</li>
-            </ol>
+            <li>Open Telegram and find the bot: <strong>@userinfobot</strong>.</li>
+            <li>Tap 'Start' to get your unique Chat ID, then copy it.</li>
+            <li>Paste your Chat ID in the field below and save your settings.</li>
+            <li>Next, search for <strong>@FocusFuelCoachbot</strong>, tap 'Start', and then click 'Send Report' below.</li>
+                        </ol>
           </div>
 
           {/* Chat ID Input */}
@@ -174,7 +174,7 @@ export default function ParentalReportModal({ open, onClose }: ParentalReportMod
               ) : (
                 <>
                   <FiSend className="w-4 h-4" />
-                  <span>Send Test Message</span>
+                  <span>Send Report</span>
                 </>
               )}
             </button>
