@@ -12,6 +12,8 @@ model User {
   email          String          @unique
   name           String?
   avatarUrl      String?         @map("avatar_url")
+  parentChatId   String?         @map("parent_chat_id")
+  parentReportsEnabled Boolean   @default(false) @map("parent_reports_enabled")
   createdAt      DateTime        @default(now())  @map("created_at")
   updatedAt      DateTime        @updatedAt       @map("updated_at")
 

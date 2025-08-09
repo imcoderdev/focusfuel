@@ -23,7 +23,8 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import AITaskPlanner from '@/components/AITaskPlanner';
-
+import ParentalReportModal from '@/components/ParentalReportModal';
+import { HiOutlineChatBubbleBottomCenterText } from "react-icons/hi2";
 
 ChartJS.register(
   CategoryScale,
@@ -72,6 +73,7 @@ export default function FocusFuelDashboard() {
   const { user, loading } = useSupabaseAuth();
   const router = useRouter();
   const [userName, setUserName] = useState<string>("");
+  const [showParentModal, setShowParentModal] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     stats: {
       bonsaisGrown: "0",
@@ -278,12 +280,27 @@ export default function FocusFuelDashboard() {
             transition={{ duration: 0.6 }}
             className="lg:col-span-4"
           >
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
-              Welcome back, {userName}!
-            </h1>
-            <p className="text-md text-slate-500 dark:text-slate-400 mt-1">
-              Let's make today productive. Here's your game plan.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
+                  Welcome back, {userName}!
+                </h1>
+                <p className="text-md text-slate-500 dark:text-slate-400 mt-1">
+                  Let's make today productive. Here's your game plan.
+                </p>
+              </div>
+              
+              {/* Parent Reports Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowParentModal(true)}
+                className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center space-x-2 transition-all duration-200"
+              >
+                <HiOutlineChatBubbleBottomCenterText className="h-5 w-5" />
+                <span className="font-medium">Parent Reports</span>
+              </motion.button>
+            </div>
           </motion.div>
 
           {/* Stats Grid */}
@@ -367,6 +384,12 @@ export default function FocusFuelDashboard() {
 
         </div>
       </div>
+
+      {/* Parent Reports Modal */}
+      <ParentalReportModal 
+        open={showParentModal} 
+        onClose={() => setShowParentModal(false)} 
+      />
     </div>
   );
 }
