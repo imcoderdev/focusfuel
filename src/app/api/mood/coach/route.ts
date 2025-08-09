@@ -92,16 +92,28 @@ export async function POST(request: NextRequest) {
     // Save the coaching interaction for analytics (optional)
     if (userEmail) {
       try {
-        await supabase
-          .from('Mood')
-          .insert({
-            userEmail,
-            mood: mood.toLowerCase(),
-            createdAt: new Date().toISOString(),
-          });
+        // First find the user by email to get their ID
+        const { data: user, error: userError } = await supabase
+          .from('User')
+          .select('id')
+          .eq('email', userEmail)
+          .single();
+
+        if (user && !userError) {
+          await supabase
+            .from('Mood')
+            .insert({
+              userId: user.id,  // Use userId instead of userEmail
+              mood: mood.toLowerCase(),
+              createdAt: new Date().toISOString(),
+            });
+          console.log("✅ Mood saved successfully for coaching");
+        } else {
+          console.log("❌ User not found for mood saving:", userEmail);
+        }
       } catch (error) {
         // Don't fail the request if mood saving fails
-        console.log("Could not save mood entry");
+        console.log("❌ Could not save mood entry:", error);
       }
     }
 
